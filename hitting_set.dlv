@@ -1,0 +1,13 @@
+% data is a collection of predicates c(x,y), meaning
+% subset x contains element y.
+
+s(X) :- c(X,Y).
+
+:~ sc(X,Y). [1:1]
+:~ select(X). [1:1]
+
+sc(X,Y) v ~sc(X,Y) :- c(X,Y).
+
+select(X) :- sc(_,X).
+
+:- c(X,_), #count{I : sc(X,I)} < 1.
