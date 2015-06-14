@@ -49,7 +49,6 @@ for icf, configuration in enumerate(configurations):
         hits[icf].append((mapping,matches))
 
 conflicts = set()
-single = True
 
 for hits_in_configuration in hits:
     for h in hits_in_configuration:
