@@ -27,6 +27,7 @@ configurations = [alpha,worst_diverse]
 print_conflicts = print_conflicts_dlv
 
 hits = [list() for _ in configurations]
+conflicts = set()
 
 for icf, configuration in enumerate(configurations):
     #this is not MAGIC!
@@ -46,16 +47,8 @@ for icf, configuration in enumerate(configurations):
                         break
                 if match:
                     matches[ic].append((iv, vote))
-        hits[icf].append((mapping,matches))
-
-conflicts = set()
-
-for hits_in_configuration in hits:
-    for h in hits_in_configuration:
-       matched_votes = [[y[0] for y in u] for u in h[1]]
-       # since empty lists are evaluated to False, this assures, that all
-       # conditions in the configuration have been matched.
-       if all(matched_votes):
+        matched_votes = [[y[0] for y in u] for u in matches]
+        if all(matched_votes):
             combinations = product(*matched_votes)
             for combination in combinations:
                 conflicts.add(combination)
