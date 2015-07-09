@@ -10,7 +10,11 @@ election = read_election_file(open(filename))
 candidates = election[0]
 votes = election[1]
 
-if is_single_peaked(votes, candidates):
-    print(filename + " SINGLE")
+res = is_single_peaked(votes, candidates);
+if len(votes) == 1 or res:
+    if len(votes) == 1:
+        print(filename + " SINGLE (trivial)")
+    else:
+        print(filename + " SINGLE")
 else:
     print(filename + " MULTI")
