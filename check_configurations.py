@@ -45,9 +45,9 @@ class Configuration:
     def count_assignments(self, candidates):
         l = len(candidates)
         if self.unique_assignments:
-            return math.factorial(l)/math.factorial(l - self.numvars)
+            return int(factorial(l)/factorial(l - self.numvars))
         else:
-            return pow(l, self.numvars)
+            return int(pow(l, self.numvars))
 
     def is_match(self, mapping, vote, iv, matches):
         for ic, condition in enumerate(self.tuples):
