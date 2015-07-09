@@ -69,7 +69,7 @@ for icf, configuration in enumerate(configurations):
                 if match:
                     # TODO: abstract a function which either adds votes or candidates
                     matches[ic].append((iv, vote))
-        matched_votes = [[y[0] for y in u] for u in matches]
+        matched_votes = {tuple(sorted([y[0] for y in u])) for u in matches}
         if all(matched_votes):
             combinations = product(*matched_votes)
             for combination in combinations:
