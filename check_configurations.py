@@ -3,6 +3,9 @@ from DomainRestriction import is_single_peaked
 from itertools import permutations, chain, product
 from sys import argv
 from math import factorial
+from curses import tigetstr, tparm, setupterm
+from locale import setlocale, getpreferredencoding, LC_ALL
+import sys
 
 def print_conflicts_wcnf(conflicts, election):
     # the sum of violated soft clauses is smaller than the number of votes
@@ -83,9 +86,15 @@ print_conflicts = print_conflicts_wcnf
 hits = [list() for _ in configurations]
 conflicts = set()
 
+setlocale(LC_ALL, '')
+code = getpreferredencoding()
+setupterm()
+
 for icf, configuration in enumerate(configurations):
+    sys.stdout.write(tigetstr("sc").decode(code))
     mappings = configuration.generate_mappings(candidates.keys())
-    for mapping in mappings:
+    numassgs = configuration.count_assignments(candidates.keys())
+    for im, mapping in enumerate(mappings, 1):
         matches = [[] for _ in range(configuration.numconds)]
         for iv, vote in enumerate(votes, 1):
             configuration.is_match(mapping, vote, iv,matches)
@@ -94,5 +103,6 @@ for icf, configuration in enumerate(configurations):
             combinations = product(*matched_votes)
             for combination in combinations:
                 conflicts.add(combination)
+        sys.stdout.write(tigetstr("rc").decode(code) + str(im) + "/" + str(numassgs) + "\n")
 
-print_conflicts(conflicts, election)
+#print_conflicts(conflicts, election)
