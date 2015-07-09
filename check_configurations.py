@@ -56,8 +56,8 @@ for icf, configuration in enumerate(configurations):
     mappings = permutations(candidates.keys(),numvars)
     for mapping in mappings:
         matches = [list() for _ in configuration]
-        for ic, condition in enumerate(configuration):
-            for iv, vote in enumerate(votes, 1):
+        for iv, vote in enumerate(votes, 1):
+            for ic, condition in enumerate(configuration):
                 match = True
                 for ineq in condition:
                     # small numbers mean preferred candidates, therefore <
