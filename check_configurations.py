@@ -1,35 +1,101 @@
-from PreflibUtils import read_election_file
+from PreflibUtils import read_election_file, write_map
 from DomainRestriction import is_single_peaked
 from itertools import permutations, chain, product
+from os import remove
 from sys import argv
 from math import factorial
 from curses import tigetstr, tparm, setupterm
 from locale import setlocale, getpreferredencoding, LC_ALL
+from tempfile import NamedTemporaryFile
+from subprocess import *
 import sys
 
-def print_conflicts_wcnf(conflicts, election):
-    # the sum of violated soft clauses is smaller than the number of votes
-    top = election[3] + 1
-    weights = election[2]
-    number_of_variables = len(weights)
-    number_of_clauses = len(conflicts) + number_of_variables
+class Solver:
+    def __init__(self, cmd):
+        self.cmd = cmd
 
-    parameter_line =  "p wcnf "
-    parameter_line += str(number_of_variables) + " "
-    parameter_line += str(number_of_clauses) + " " + str(top)
+    def run_solver(self, conflicts, election, outfile=None):
+        instance = self.generate_instance(conflicts, election)
 
-    print(parameter_line)
+        f = NamedTemporaryFile(delete=False)
+        f.write(instance.encode(code))
+        f.close()
 
-    for i in conflicts:
-        hard_clause = str(top) + " "
-        for j in i:
-            hard_clause += str(j) + " "
-        hard_clause += "0"
-        print(hard_clause)
+        process = Popen([self.cmd, f.name], stdout=PIPE)
+        out, err = process.communicate()
 
-    for i,w in enumerate(weights,1):
-        soft_clause = str(w) + " -" + str(i) + " 0"
-        print(soft_clause)
+        conflict_variables,optimum = self.parse_instance(out)
+
+        if outfile:
+            candidates = election[0]
+            votes = election[1]
+            votecounts = election[2]
+
+            votemap = self.delete_votes(votes, votecounts, conflict_variables)
+            votesum = sum(votemap.values())
+
+            write_map(candidates, votesum, votemap, open(outfile, "w"))
+
+        remove(f.name) 
+        return conflict_variables, optimum
+
+    def votes_to_key(self, votes):
+        reverse_votes = dict(map(lambda x: (x[1],x[0]), votes.items()))
+        s = ""
+        for i in sorted(reverse_votes.keys()):
+            s += str(reverse_votes[i])+","
+
+        return s[:-1]
+
+    def delete_votes(self, votes, votecounts, conflict_votes):
+        votemap = dict()
+        tuples = list(zip(map(self.votes_to_key, votes),votecounts,range(1,len(votes)+1)))
+
+        for key,count,index in tuples:
+            if index not in conflict_votes:
+                votemap[key] = count
+
+        return votemap
+
+    def parse_instance(self, out):
+        conflict_variables = []
+        optimum = None
+        for line in out.decode(code).splitlines():
+            if line[0] == 'v':
+                for v in line[2:-2].split(" "):
+                    if v[0] != '-':
+                        conflict_variables.append(int(v))
+            elif line[0] == 'o':
+                optimum = int(line[2:])
+
+        return conflict_variables, optimum
+
+
+    def generate_instance(self, conflicts, election):
+        # the sum of violated soft clauses is smaller than the number of votes
+        top = election[3] + 1
+        weights = election[2]
+        number_of_variables = len(weights)
+        number_of_clauses = len(conflicts) + number_of_variables
+
+        parameter_line =  "p wcnf "
+        parameter_line += str(number_of_variables) + " "
+        parameter_line += str(number_of_clauses) + " " + str(top)
+
+        ret = parameter_line + "\n"
+
+        for i in conflicts:
+            hard_clause = str(top) + " "
+            for j in i:
+                hard_clause += str(j) + " "
+            hard_clause += "0\n"
+            ret += hard_clause
+
+        for i,w in enumerate(weights,1):
+            soft_clause = str(w) + " -" + str(i) + " 0\n"
+            ret += soft_clause
+
+        return ret
 
 class Configuration:
     def __init__(self, tuples, unique_assignments):
@@ -48,7 +114,10 @@ class Configuration:
     def count_assignments(self, candidates):
         l = len(candidates)
         if self.unique_assignments:
-            return int(factorial(l)/factorial(l - self.numvars))
+            if l - self.numvars > 0:
+                return int(factorial(l)/factorial(l - self.numvars))
+            else:
+                return 0
         else:
             return int(pow(l, self.numvars))
 
@@ -80,15 +149,14 @@ worst_diverse = Configuration([[(1,3), (2,3)], [(1,2), (3,2)], [(2,1), (3,1)]], 
 
 configurations = [alpha,worst_diverse]
 
-# Function used to print the conflicts as encoding
-print_conflicts = print_conflicts_wcnf
-
 hits = [list() for _ in configurations]
 conflicts = set()
 
 setlocale(LC_ALL, '')
 code = getpreferredencoding()
 setupterm()
+
+solver = Solver("clasp")
 
 for icf, configuration in enumerate(configurations):
     sys.stdout.write(tigetstr("sc").decode(code))
@@ -105,4 +173,5 @@ for icf, configuration in enumerate(configurations):
                 conflicts.add(combination)
         sys.stdout.write(tigetstr("rc").decode(code) + str(im) + "/" + str(numassgs) + "\n")
 
+print(solver.run_solver(conflicts, election))
 #print_conflicts(conflicts, election)
