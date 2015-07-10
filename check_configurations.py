@@ -145,7 +145,12 @@ votes = election[1]
 # (a,b) means a > b. The inequalities are conjoined.
 # TODO: implement disjunction.
 alpha = Configuration([[(1,2), (2,3), (4,2)], [(3,2), (2,1), (4,2)]], unique_assignments=True)
+beta = Configuration([[(1,2), (2,3), (3,4)], [(2,4), (4,1), (1,3)]], unique_assignments=True)
+gamma = Configuration([[(2,1), (3,4), (5,6)], [(1,2), (4,3), (5,6)], [(1,2), (3,4), (6,5)]], unique_assignments=False)
+delta = Configuration([[(1,2), (3,4)], [(1,2), (4,3)], [(2,1), (3,4)], [(2,1),(4,3)]], unique_assignments=False)
+best_diverse = Configuration([[(1,2), (1,3)], [(2,1), (2,3)], [(3,1), (3,2)]], unique_assignments=True)
 worst_diverse = Configuration([[(1,3), (2,3)], [(1,2), (3,2)], [(2,1), (3,1)]], unique_assignments=True)
+
 
 configurations = [alpha,worst_diverse]
 
