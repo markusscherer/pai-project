@@ -1,12 +1,10 @@
 from PreflibUtils import read_election_file, write_map
-from DomainRestriction import is_single_peaked
 from itertools import permutations, chain, product
 from os import remove
-from sys import argv
 from math import factorial
 from locale import setlocale, getpreferredencoding, LC_ALL
 from tempfile import NamedTemporaryFile
-from subprocess import *
+from subprocess import Popen, PIPE
 import sys
 import argparse
 
@@ -16,7 +14,7 @@ class Solver:
 
     def run_solver(self, conflicts, election, outfile=None):
         if not conflicts:
-            return [],0
+            return [], 0
 
         instance = self.generate_instance(conflicts, election)
 
@@ -27,7 +25,7 @@ class Solver:
         process = Popen([self.cmd, f.name], stdout=PIPE)
         out, err = process.communicate()
 
-        conflict_variables,optimum = self.parse_instance(out)
+        conflict_variables, optimum = self.parse_instance(out)
 
         if outfile:
             candidates = election[0]
@@ -39,22 +37,22 @@ class Solver:
 
             write_map(candidates, votesum, votemap, open(outfile, "w"))
 
-        #remove(f.name) 
+        #remove(f.name)
         return conflict_variables, optimum
 
     def votes_to_key(self, votes):
-        reverse_votes = dict(map(lambda x: (x[1],x[0]), votes.items()))
-        s = ""
+        reverse_votes = dict(map(lambda x: (x[1], x[0]), votes.items()))
+        key = ""
         for i in sorted(reverse_votes.keys()):
-            s += str(reverse_votes[i])+","
+            key += str(reverse_votes[i])+","
 
-        return s[:-1]
+        return key[:-1]
 
     def delete_votes(self, votes, votecounts, conflict_votes):
         votemap = dict()
-        tuples = list(zip(map(self.votes_to_key, votes),votecounts,range(1,len(votes)+1)))
+        tuples = list(zip(map(self.votes_to_key, votes), votecounts, range(1, len(votes)+1)))
 
-        for key,count,index in tuples:
+        for key, count, index in tuples:
             if index not in conflict_votes:
                 votemap[key] = count
 
@@ -81,7 +79,7 @@ class Solver:
         number_of_variables = len(weights)
         number_of_clauses = len(conflicts) + number_of_variables
 
-        parameter_line =  "p wcnf "
+        parameter_line = "p wcnf "
         parameter_line += str(number_of_variables) + " "
         parameter_line += str(number_of_clauses) + " " + str(top)
 
@@ -94,7 +92,7 @@ class Solver:
             hard_clause += "0\n"
             ret += hard_clause
 
-        for i,w in enumerate(weights,1):
+        for i,w in enumerate(weights, 1):
             # for some reason, there are instances with 0 weight
             # clasp complains about this (while log4j does not),
             # therefore we filter. Zero-weight-clauses won't be deleted.
@@ -114,7 +112,7 @@ class Configuration:
 
     def generate_mappings(self, candidates):
         if self.unique_assignments:
-            return permutations(candidates,self.numvars)
+            return permutations(candidates, self.numvars)
         else:
             return product(candidates, repeat=self.numvars)
 
@@ -142,13 +140,12 @@ class Configuration:
             if match:
                 matches[ic].append((iv, vote))
 
-def do_nothing(*args):
+def do_nothing(*_):
     pass
 
 # List of list of tuples. An inner list corresponds to a condition in a
-# configuration. The tuples represent strict greater-than inequalities 
+# configuration. The tuples represent strict greater-than inequalities
 # (a,b) means a > b. The inequalities are conjoined.
-# TODO: implement disjunction.
 alpha = Configuration([[(1,2), (2,3), (4,2)], [(3,2), (2,1), (4,2)]], unique_assignments=True)
 anti_alpha = Configuration([[(2,1), (3,2), (2,4)], [(2,3), (1,2), (2,4)]], unique_assignments=True)
 beta = Configuration([[(1,2), (2,3), (3,4)], [(2,4), (4,1), (1,3)]], unique_assignments=True)
@@ -158,11 +155,11 @@ best_diverse = Configuration([[(1,2), (1,3)], [(2,1), (2,3)], [(3,1), (3,2)]], u
 worst_diverse = Configuration([[(1,3), (2,3)], [(1,2), (3,2)], [(2,1), (3,1)]], unique_assignments=True)
 
 domain_restrictions = [
-        ("single-peaked", [alpha, worst_diverse]),
-        ("single-caved", [anti_alpha, best_diverse]),
-        ("worst-restricted", [worst_diverse]),
-        ("best-restricted", [best_diverse]),
-        ("single-crossing", [gamma, delta])
+    ("single-peaked", [alpha, worst_diverse]),
+    ("single-caved", [anti_alpha, best_diverse]),
+    ("worst-restricted", [worst_diverse]),
+    ("best-restricted", [best_diverse]),
+    ("single-crossing", [gamma, delta])
 ]
 
 domain_restriction_string = ""
@@ -178,13 +175,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("file", action="store", metavar="FILE",
         help="file to analyze")
 parser.add_argument("-q", "--quiet", action="store_true", help="suppress ouput")
-parser.add_argument("-i", "--include", action="append", 
+parser.add_argument("-i", "--include", action="append",
         help="include given domain restriction (default: all) possible values: "
         + domain_restriction_string,
         choices=domain_restriction_names, nargs="+",
         default=[],
         metavar="DR")
-parser.add_argument("-e", "--exclude", action="append", 
+parser.add_argument("-e", "--exclude", action="append",
         help="exclude given domain restriction (default: none) possible values: "
         + domain_restriction_string,
         choices=domain_restriction_names, nargs="+",
@@ -196,7 +193,7 @@ includes = set(chain(*args["include"]))
 excludes = set(chain(*args["exclude"]))
 
 if includes & excludes:
-    sys.stderr.write("Included and excluded domain restrictions overlap!") 
+    sys.stderr.write("Included and excluded domain restrictions overlap!")
     sys.exit(2)
 
 tmp_domain_restrictions = []
