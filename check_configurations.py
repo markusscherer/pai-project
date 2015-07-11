@@ -143,44 +143,55 @@ election = read_election_file(open(filename))
 
 candidates = election[0]
 votes = election[1]
+votecount = election[3]
 
 # List of list of tuples. An inner list corresponds to a condition in a
 # configuration. The tuples represent strict greater-than inequalities 
 # (a,b) means a > b. The inequalities are conjoined.
 # TODO: implement disjunction.
 alpha = Configuration([[(1,2), (2,3), (4,2)], [(3,2), (2,1), (4,2)]], unique_assignments=True)
+anti_alpha = Configuration([[(2,1), (3,2), (2,4)], [(2,3), (1,2), (2,4)]], unique_assignments=True)
 beta = Configuration([[(1,2), (2,3), (3,4)], [(2,4), (4,1), (1,3)]], unique_assignments=True)
 gamma = Configuration([[(2,1), (3,4), (5,6)], [(1,2), (4,3), (5,6)], [(1,2), (3,4), (6,5)]], unique_assignments=False)
 delta = Configuration([[(1,2), (3,4)], [(1,2), (4,3)], [(2,1), (3,4)], [(2,1),(4,3)]], unique_assignments=False)
 best_diverse = Configuration([[(1,2), (1,3)], [(2,1), (2,3)], [(3,1), (3,2)]], unique_assignments=True)
 worst_diverse = Configuration([[(1,3), (2,3)], [(1,2), (3,2)], [(2,1), (3,1)]], unique_assignments=True)
 
-
-configurations = [alpha,worst_diverse]
-
-hits = [list() for _ in configurations]
-conflicts = set()
+domain_restrictions = [
+        ("single-peaked", [alpha, worst_diverse]),
+        ("single-caved", [anti_alpha, best_diverse]),
+        ("worst-restricted", [worst_diverse]),
+        ("best-restricted", [best_diverse]),
+        ("single-crossing", [gamma, delta])
+]
 
 setlocale(LC_ALL, '')
 code = getpreferredencoding()
 setupterm()
 
 solver = Solver("clasp")
+output_template = ("Deleted {delcount} of {votecount} votes ({percentage:.2f}%) "
+                   "to ensure domain restriction: {domain_restriction}")
 
-for icf, configuration in enumerate(configurations):
-    sys.stdout.write(tigetstr("sc").decode(code))
-    mappings = configuration.generate_mappings(candidates.keys())
-    numassgs = configuration.count_assignments(candidates.keys())
-    for im, mapping in enumerate(mappings, 1):
-        matches = [[] for _ in range(configuration.numconds)]
-        for iv, vote in enumerate(votes, 1):
-            configuration.is_match(mapping, vote, iv,matches)
-        matched_votes = sorted([sorted([y[0] for y in u]) for u in matches])
-        if all(matched_votes): 
-            combinations = product(*matched_votes)
-            for combination in combinations:
-                conflicts.add(combination)
-        sys.stdout.write(tigetstr("rc").decode(code) + str(im) + "/" + str(numassgs) + "\n")
+for name,configurations in domain_restrictions:
+    print("Currently solving: " + name)
+    conflicts = set()
+    for icf, configuration in enumerate(configurations):
+        sys.stdout.write(tigetstr("sc").decode(code))
+        mappings = configuration.generate_mappings(candidates.keys())
+        numassgs = configuration.count_assignments(candidates.keys())
+        for im, mapping in enumerate(mappings, 1):
+            matches = [[] for _ in range(configuration.numconds)]
+            for iv, vote in enumerate(votes, 1):
+                configuration.is_match(mapping, vote, iv,matches)
+            matched_votes = sorted([sorted([y[0] for y in u]) for u in matches])
+            if all(matched_votes):
+                combinations = product(*matched_votes)
+                for combination in combinations:
+                    conflicts.add(combination)
+            sys.stdout.write(tigetstr("rc").decode(code))
+            print("    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
 
-print(solver.run_solver(conflicts, election))
-#print_conflicts(conflicts, election)
+    conflict_vote, delcount = solver.run_solver(conflicts, election)
+    print(output_template.format(delcount=delcount, votecount=votecount,
+        percentage=100*delcount/votecount, domain_restriction=name))
