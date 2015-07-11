@@ -15,6 +15,9 @@ class Solver:
         self.cmd = cmd
 
     def run_solver(self, conflicts, election, outfile=None):
+        if not conflicts:
+            return [],0
+
         instance = self.generate_instance(conflicts, election)
 
         f = NamedTemporaryFile(delete=False)
@@ -62,8 +65,8 @@ class Solver:
         optimum = None
         for line in out.decode(code).splitlines():
             if line[0] == 'v':
-                for v in line[2:-2].split(" "):
-                    if v[0] != '-':
+                for v in line[2:].split(" "):
+                    if v and v[0] != '-':
                         conflict_variables.append(int(v))
             elif line[0] == 'o':
                 optimum = int(line[2:])
@@ -92,8 +95,12 @@ class Solver:
             ret += hard_clause
 
         for i,w in enumerate(weights,1):
-            soft_clause = str(w) + " -" + str(i) + " 0\n"
-            ret += soft_clause
+            # for some reason, there are instances with 0 weight
+            # clasp complains about this (while log4j does not),
+            # therefore we filter. Zero-weight-clauses won't be deleted.
+            if w > 0:
+                soft_clause = str(w) + " -" + str(i) + " 0\n"
+                ret += soft_clause
 
         return ret
 
@@ -114,10 +121,7 @@ class Configuration:
     def count_assignments(self, candidates):
         l = len(candidates)
         if self.unique_assignments:
-            if l - self.numvars > 0:
-                return int(factorial(l)/factorial(l - self.numvars))
-            else:
-                return 0
+            return int(factorial(l)/factorial(l - self.numvars))
         else:
             return int(pow(l, self.numvars))
 
