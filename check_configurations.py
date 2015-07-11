@@ -196,7 +196,7 @@ includes = set(chain(*args["include"]))
 excludes = set(chain(*args["exclude"]))
 
 if includes & excludes:
-    sys.stderr.write("Included and excludes domain restrictions overlap!") 
+    sys.stderr.write("Included and excluded domain restrictions overlap!") 
     sys.exit(2)
 
 tmp_domain_restrictions = []
