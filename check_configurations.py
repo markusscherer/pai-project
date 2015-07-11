@@ -4,11 +4,11 @@ from itertools import permutations, chain, product
 from os import remove
 from sys import argv
 from math import factorial
-from curses import tigetstr, tparm, setupterm
 from locale import setlocale, getpreferredencoding, LC_ALL
 from tempfile import NamedTemporaryFile
 from subprocess import *
 import sys
+import argparse
 
 class Solver:
     def __init__(self, cmd):
@@ -39,7 +39,7 @@ class Solver:
 
             write_map(candidates, votesum, votemap, open(outfile, "w"))
 
-        remove(f.name) 
+        #remove(f.name) 
         return conflict_variables, optimum
 
     def votes_to_key(self, votes):
@@ -121,7 +121,11 @@ class Configuration:
     def count_assignments(self, candidates):
         l = len(candidates)
         if self.unique_assignments:
-            return int(factorial(l)/factorial(l - self.numvars))
+            if l - self.numvars >= 0:
+                return int(factorial(l)/factorial(l - self.numvars))
+            else:
+                return 0
+
         else:
             return int(pow(l, self.numvars))
 
@@ -138,12 +142,8 @@ class Configuration:
             if match:
                 matches[ic].append((iv, vote))
 
-filename = argv[1]
-election = read_election_file(open(filename))
-
-candidates = election[0]
-votes = election[1]
-votecount = election[3]
+def do_nothing(*args):
+    pass
 
 # List of list of tuples. An inner list corresponds to a condition in a
 # configuration. The tuples represent strict greater-than inequalities 
@@ -165,19 +165,74 @@ domain_restrictions = [
         ("single-crossing", [gamma, delta])
 ]
 
+domain_restriction_string = ""
+domain_restriction_names = []
+
+for i in domain_restrictions:
+    domain_restriction_string += i[0] + ", "
+    domain_restriction_names.append(i[0])
+
+domain_restriction_string = domain_restriction_string[:-2]
+
+parser = argparse.ArgumentParser()
+parser.add_argument("file", action="store", metavar="FILE",
+        help="file to analyze")
+parser.add_argument("-q", "--quiet", action="store_true", help="suppress ouput")
+parser.add_argument("-i", "--include", action="append", 
+        help="include given domain restriction (default: all) possible values: "
+        + domain_restriction_string,
+        choices=domain_restriction_names, nargs="+",
+        default=[],
+        metavar="DR")
+parser.add_argument("-e", "--exclude", action="append", 
+        help="exclude given domain restriction (default: none) possible values: "
+        + domain_restriction_string,
+        choices=domain_restriction_names, nargs="+",
+        default=[],
+        metavar="DR")
+
+args = vars(parser.parse_args())
+includes = set(chain(*args["include"]))
+excludes = set(chain(*args["exclude"]))
+
+if includes & excludes:
+    sys.stderr.write("Included and excludes domain restrictions overlap!") 
+    sys.exit(2)
+
+tmp_domain_restrictions = []
+if includes:
+    for i in domain_restrictions:
+        if i[0] in includes:
+            tmp_domain_restrictions.append(i)
+    domain_restrictions = tmp_domain_restrictions
+elif excludes:
+    for i in domain_restrictions:
+        if i[0] not in excludes:
+            tmp_domain_restrictions.append(i)
+    domain_restrictions = tmp_domain_restrictions
+
+myprint = sys.stdout.write
+if args["quiet"]:
+    myprint = do_nothing
+
+filename = args["file"]
+election = read_election_file(open(filename))
+
+candidates = election[0]
+votes = election[1]
+votecount = election[3]
+
 setlocale(LC_ALL, '')
 code = getpreferredencoding()
-setupterm()
 
 solver = Solver("clasp")
 output_template = ("Deleted {delcount} of {votecount} votes ({percentage:.2f}%) "
-                   "to ensure domain restriction: {domain_restriction}")
+                   "to ensure domain restriction: {domain_restriction}\n")
 
 for name,configurations in domain_restrictions:
-    print("Currently solving: " + name)
+    myprint("Currently solving: " + name + "\n")
     conflicts = set()
     for icf, configuration in enumerate(configurations):
-        sys.stdout.write(tigetstr("sc").decode(code))
         mappings = configuration.generate_mappings(candidates.keys())
         numassgs = configuration.count_assignments(candidates.keys())
         for im, mapping in enumerate(mappings, 1):
@@ -189,9 +244,10 @@ for name,configurations in domain_restrictions:
                 combinations = product(*matched_votes)
                 for combination in combinations:
                     conflicts.add(combination)
-            sys.stdout.write(tigetstr("rc").decode(code))
-            print("    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
+            myprint("\r    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
+        if numassgs > 0:
+            myprint("\n")
 
     conflict_vote, delcount = solver.run_solver(conflicts, election)
-    print(output_template.format(delcount=delcount, votecount=votecount,
+    myprint(output_template.format(delcount=delcount, votecount=votecount,
         percentage=100*delcount/votecount, domain_restriction=name))
