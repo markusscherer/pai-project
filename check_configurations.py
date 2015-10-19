@@ -200,10 +200,20 @@ delta = Configuration([[(1,2), (3,4)], [(1,2), (4,3)], [(2,1), (3,4)], [(2,1),(4
 best_diverse = Configuration([[(1,2), (1,3)], [(2,1), (2,3)], [(3,1), (3,2)]], unique_assignments=True)
 worst_diverse = Configuration([[(1,3), (2,3)], [(1,2), (3,2)], [(2,1), (3,1)]], unique_assignments=True)
 
+medium_diverse = []
+medium_diverse_equations = zip([[(2,1), (1,3)], [(1,2), (2,3)], [(1,3), (3,2)]],
+                               [[(3,1), (1,2)], [(3,2), (2,1)], [(2,3), (3,1)]])
+
+for equations in product(*medium_diverse_equations):
+    medium_diverse.append(Configuration(list(equations), unique_assignments=True))
+
+
 domain_restrictions = [
     ("single-peaked", [alpha, worst_diverse]),
     ("single-caved", [anti_alpha, best_diverse]),
     ("worst-restricted", [worst_diverse]),
+    ("medium-restricted", [*medium_diverse]),
+    ("group-separable", [*medium_diverse, beta]),
     ("best-restricted", [best_diverse]),
     ("single-crossing", [gamma, delta])
 ]
