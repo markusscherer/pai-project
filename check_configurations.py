@@ -94,7 +94,7 @@ class Solver:
             hard_clause += "0\n"
             ret += hard_clause
 
-        for i,w in enumerate(weights, 1):
+        for i, w in enumerate(weights, 1):
             # for some reason, there are instances with 0 weight
             # clasp complains about this (while log4j does not),
             # therefore we filter. Zero-weight-clauses won't be deleted.
@@ -219,24 +219,24 @@ domain_restriction_string = domain_restriction_string[:-2]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("file", action="store", metavar="FILE",
-        help="file to analyze")
+                    help="file to analyze")
 parser.add_argument("-q", "--quiet", action="store_true", help="suppress ouput")
 parser.add_argument("-i", "--include", action="append",
-        help="include given domain restriction (default: all) possible values: "
-        + domain_restriction_string,
-        choices=domain_restriction_names, nargs="+",
-        default=[],
-        metavar="DR")
+                    help="include given domain restriction (default: all) possible values: "
+                    + domain_restriction_string,
+                    choices=domain_restriction_names, nargs="+",
+                    default=[],
+                    metavar="DR")
 parser.add_argument("-e", "--exclude", action="append",
-        help="exclude given domain restriction (default: none) possible values: "
-        + domain_restriction_string,
-        choices=domain_restriction_names, nargs="+",
-        default=[],
-        metavar="DR")
+                    help="exclude given domain restriction (default: none) possible values: "
+                    + domain_restriction_string,
+                    choices=domain_restriction_names, nargs="+",
+                    default=[],
+                    metavar="DR")
 parser.add_argument("-v", "--vote-deletion", action="store_true",
-        help="delete votes to ensure domain restrictions")
+                    help="delete votes to ensure domain restrictions")
 parser.add_argument("-c", "--candidate-deletion", action="store_true",
-        help="delete candidates to ensure domain restrictions (default)")
+                    help="delete candidates to ensure domain restrictions (default)")
 
 args = vars(parser.parse_args())
 includes = set(chain(*args["include"]))
@@ -303,4 +303,4 @@ for name,configurations in domain_restrictions:
 
     conflict_vote, delcount = solver.run_solver(conflicts, election, deletion_handler)
     myprint(output_template.format(delcount=delcount, initcount=initcount,
-        percentage=100*delcount/initcount, domain_restriction=name))
+                                   percentage=100*delcount/initcount, domain_restriction=name))
