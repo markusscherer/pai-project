@@ -12,9 +12,11 @@ class Solver:
     def __init__(self, cmd):
         self.cmd = cmd
 
-    def run_solver(self, conflicts, election, outfile=None):
+    def run_solver(self, conflicts, election, deletion_handler, outfile=None):
         if not conflicts:
             return [], 0
+
+        self.deletion_handler = deletion_handler
 
         instance = self.generate_instance(conflicts, election)
 
@@ -74,9 +76,9 @@ class Solver:
 
     def generate_instance(self, conflicts, election):
         # the sum of violated soft clauses is smaller than the number of votes
-        top = election[3] + 1
-        weights = election[2]
-        number_of_variables = len(weights)
+        top = deletion_handler.get_top(election)
+        weights = deletion_handler.get_weights(election)
+        number_of_variables = deletion_handler.get_number_of_variables(election)
         number_of_clauses = len(conflicts) + number_of_variables
 
         parameter_line = "p wcnf "
@@ -101,6 +103,50 @@ class Solver:
                 ret += soft_clause
 
         return ret
+
+class VoteDeletionHandler:
+    def get_number_of_variables(self, election):
+        return len(self.get_weights(election))
+
+    def get_top(self, election):
+        return election[3]+1
+
+    def get_weights(self, election):
+        return election[2]
+
+    def add_conflicts(self, mapping, configuration, matched_votes, conflicts):
+        combinations = product(*matched_votes)
+        for combination in combinations:
+            conflicts.add(combination)
+
+    def get_init_count(self, election):
+        return election[3]
+
+    def get_output_template(self):
+        return ("deleted {delcount} of {initcount} votes "
+                "({percentage:.2f}%)to ensure domain restriction: "
+                "{domain_restriction}\n")
+
+class CandidateDeletionHandler:
+    def get_number_of_variables(self, election):
+        return len(election[0])
+
+    def get_top(self, election):
+        return self.get_number_of_variables(election) + 1
+
+    def get_weights(self, election):
+        return self.get_number_of_variables(election) * [1]
+
+    def add_conflicts(self, mapping, configuration, matched_votes, conflicts):
+        conflicts.add(mapping[0:configuration.numvars])
+
+    def get_init_count(self, election):
+        return len(election[0])
+
+    def get_output_template(self):
+        return ("deleted {delcount} of {initcount} candidates "
+                "({percentage:.2f}%)to ensure domain restriction: "
+                "{domain_restriction}\n")
 
 class Configuration:
     def __init__(self, tuples, unique_assignments):
@@ -187,6 +233,10 @@ parser.add_argument("-e", "--exclude", action="append",
         choices=domain_restriction_names, nargs="+",
         default=[],
         metavar="DR")
+parser.add_argument("-v", "--vote-deletion", action="store_true",
+        help="delete votes to ensure domain restrictions")
+parser.add_argument("-c", "--candidate-deletion", action="store_true",
+        help="delete candidates to ensure domain restrictions (default)")
 
 args = vars(parser.parse_args())
 includes = set(chain(*args["include"]))
@@ -212,19 +262,27 @@ myprint = sys.stdout.write
 if args["quiet"]:
     myprint = do_nothing
 
+if args["candidate_deletion"] and args["vote_deletion"]:
+    sys.stderr.write("For now candidate deletion and vote deletion exclude one another!")
+    sys.exit(2)
+
+deletion_handler = VoteDeletionHandler()
+
+if args["candidate_deletion"]:
+    deletion_handler = CandidateDeletionHandler()
+
 filename = args["file"]
 election = read_election_file(open(filename))
 
 candidates = election[0]
 votes = election[1]
-votecount = election[3]
+initcount = deletion_handler.get_init_count(election)
 
 setlocale(LC_ALL, '')
 code = getpreferredencoding()
 
 solver = Solver("clasp")
-output_template = ("Deleted {delcount} of {votecount} votes ({percentage:.2f}%) "
-                   "to ensure domain restriction: {domain_restriction}\n")
+output_template = deletion_handler.get_output_template()
 
 for name,configurations in domain_restrictions:
     myprint("Currently solving: " + name + "\n")
@@ -235,16 +293,14 @@ for name,configurations in domain_restrictions:
         for im, mapping in enumerate(mappings, 1):
             matches = [[] for _ in range(configuration.numconds)]
             for iv, vote in enumerate(votes, 1):
-                configuration.is_match(mapping, vote, iv,matches)
+                configuration.is_match(mapping, vote, iv, matches)
             matched_votes = sorted([sorted([y[0] for y in u]) for u in matches])
             if all(matched_votes):
-                combinations = product(*matched_votes)
-                for combination in combinations:
-                    conflicts.add(combination)
+                deletion_handler.add_conflicts(mapping, configuration, matched_votes, conflicts)
             myprint("\r    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
         if numassgs > 0:
             myprint("\n")
 
-    conflict_vote, delcount = solver.run_solver(conflicts, election)
-    myprint(output_template.format(delcount=delcount, votecount=votecount,
-        percentage=100*delcount/votecount, domain_restriction=name))
+    conflict_vote, delcount = solver.run_solver(conflicts, election, deletion_handler)
+    myprint(output_template.format(delcount=delcount, initcount=initcount,
+        percentage=100*delcount/initcount, domain_restriction=name))
