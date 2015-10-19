@@ -259,8 +259,10 @@ elif excludes:
     domain_restrictions = tmp_domain_restrictions
 
 myprint = sys.stdout.write
+myprogress = sys.stderr.write
 if args["quiet"]:
     myprint = do_nothing
+    myprogress = do_nothing
 
 if args["candidate_deletion"] and args["vote_deletion"]:
     sys.stderr.write("For now candidate deletion and vote deletion exclude one another!")
@@ -285,7 +287,7 @@ solver = Solver("clasp")
 output_template = deletion_handler.get_output_template()
 
 for name,configurations in domain_restrictions:
-    myprint("Currently solving: " + name + "\n")
+    myprogress("Currently solving: " + name + "\n")
     conflicts = set()
     for icf, configuration in enumerate(configurations):
         mappings = configuration.generate_mappings(candidates.keys())
@@ -297,9 +299,9 @@ for name,configurations in domain_restrictions:
             matched_votes = sorted([sorted([y[0] for y in u]) for u in matches])
             if all(matched_votes):
                 deletion_handler.add_conflicts(mapping, configuration, matched_votes, conflicts)
-            myprint("\r    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
+            myprogress("\r    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
         if numassgs > 0:
-            myprint("\n")
+            myprogress("\n")
 
     conflict_vote, delcount = solver.run_solver(conflicts, election, deletion_handler)
     myprint(output_template.format(delcount=delcount, initcount=initcount,
