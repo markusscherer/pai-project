@@ -212,8 +212,8 @@ domain_restrictions = [
     ("single-peaked", [alpha, worst_diverse]),
     ("single-caved", [anti_alpha, best_diverse]),
     ("worst-restricted", [worst_diverse]),
-    ("medium-restricted", [*medium_diverse]),
-    ("group-separable", [*medium_diverse, beta]),
+    ("medium-restricted", medium_diverse),
+    ("group-separable", medium_diverse + [beta]),
     ("best-restricted", [best_diverse]),
     ("single-crossing", [gamma, delta])
 ]
