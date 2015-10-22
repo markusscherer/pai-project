@@ -247,6 +247,10 @@ parser.add_argument("-v", "--vote-deletion", action="store_true",
                     help="delete votes to ensure domain restrictions")
 parser.add_argument("-c", "--candidate-deletion", action="store_true",
                     help="delete candidates to ensure domain restrictions (default)")
+parser.add_argument("-t", "--template", action="store",
+                    help="specify custom output template (you can use '{delcount}', "
+                         "'{initcount}', '{percentage}' and '{domain_restriction}' in"
+                         " your template)")
 
 args = vars(parser.parse_args())
 includes = set(chain(*args["include"]))
@@ -294,7 +298,11 @@ setlocale(LC_ALL, '')
 code = getpreferredencoding()
 
 solver = Solver("clasp")
-output_template = deletion_handler.get_output_template()
+
+if args["template"]:
+    output_template = args["template"]
+else:
+    output_template = deletion_handler.get_output_template()
 
 for name,configurations in domain_restrictions:
     myprogress("Currently solving: " + name + "\n")
