@@ -124,7 +124,7 @@ class VoteDeletionHandler:
 
     def get_output_template(self):
         return ("deleted {delcount} of {initcount} votes "
-                "({percentage:.2f}%)to ensure domain restriction: "
+                "({percentage:.2f}%) to ensure domain restriction: "
                 "{domain_restriction}\n")
 
 class CandidateDeletionHandler:
@@ -145,7 +145,7 @@ class CandidateDeletionHandler:
 
     def get_output_template(self):
         return ("deleted {delcount} of {initcount} candidates "
-                "({percentage:.2f}%)to ensure domain restriction: "
+                "({percentage:.2f}%) to ensure domain restriction: "
                 "{domain_restriction}\n")
 
 class Configuration:
