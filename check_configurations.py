@@ -317,10 +317,10 @@ for name,configurations in domain_restrictions:
             matched_votes = sorted([sorted([y[0] for y in u]) for u in matches])
             if all(matched_votes):
                 deletion_handler.add_conflicts(mapping, configuration, matched_votes, conflicts)
-            myprogress("\r    {0}/{1} ({2:.2f}%)".format(im, numassgs, 100*im/numassgs))
+            myprogress("\r    {0}/{1} ({2:.2f}%)".format(im, numassgs, float(100*im)/numassgs))
         if numassgs > 0:
             myprogress("\n")
 
     conflict_vote, delcount = solver.run_solver(conflicts, election, deletion_handler)
     myprint(output_template.format(delcount=delcount, initcount=initcount,
-                                   percentage=100*delcount/initcount, domain_restriction=name))
+                                   percentage=float(100*delcount)/initcount, domain_restriction=name))
