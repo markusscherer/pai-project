@@ -244,9 +244,9 @@ parser.add_argument("-e", "--exclude", action="append",
                     default=[],
                     metavar="DR")
 parser.add_argument("-v", "--vote-deletion", action="store_true",
-                    help="delete votes to ensure domain restrictions")
+                    help="delete votes to ensure domain restrictions (default)")
 parser.add_argument("-c", "--candidate-deletion", action="store_true",
-                    help="delete candidates to ensure domain restrictions (default)")
+                    help="delete candidates to ensure domain restrictions")
 parser.add_argument("-t", "--template", action="store",
                     help="specify custom output template (you can use '{delcount}', "
                          "'{initcount}', '{percentage}' and '{domain_restriction}' in"
