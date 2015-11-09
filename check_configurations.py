@@ -39,7 +39,7 @@ class Solver:
 
             write_map(candidates, votesum, votemap, open(outfile, "w"))
 
-        #remove(f.name)
+        remove(f.name)
         return conflict_variables, optimum
 
     def votes_to_key(self, votes):
