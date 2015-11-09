@@ -64,12 +64,13 @@ class Solver:
         conflict_variables = []
         optimum = None
         for line in out.decode(code).splitlines():
-            if line[0] == 'v':
-                for v in line[2:].split(" "):
-                    if v and v[0] != '-':
-                        conflict_variables.append(int(v))
-            elif line[0] == 'o':
-                optimum = int(line[2:])
+            if len(line) > 0:
+                if line[0] == 'v':
+                    for v in line[2:].split(" "):
+                        if v and v[0] != '-':
+                            conflict_variables.append(int(v))
+                elif line[0] == 'o':
+                    optimum = int(line[2:])
 
         return conflict_variables, optimum
 
