@@ -251,6 +251,9 @@ parser.add_argument("-t", "--template", action="store",
                     help="specify custom output template (you can use '{delcount}', "
                          "'{initcount}', '{percentage}' and '{domain_restriction}' in"
                          " your template)")
+parser.add_argument("-s", "--solver-command", action="store",
+                    help="specify custom command that will be executed to solve the "
+                         "generated SAT instance (default: clasp).")
 
 args = vars(parser.parse_args())
 includes = set(chain(*args["include"]))
@@ -287,6 +290,10 @@ deletion_handler = VoteDeletionHandler()
 if args["candidate_deletion"]:
     deletion_handler = CandidateDeletionHandler()
 
+solver_command = "clasp"
+if args["solver_command"]:
+    solver_command = args["solver_command"]
+
 filename = args["file"]
 election = read_election_file(open(filename))
 
@@ -297,7 +304,7 @@ initcount = deletion_handler.get_init_count(election)
 setlocale(LC_ALL, '')
 code = getpreferredencoding()
 
-solver = Solver("clasp")
+solver = Solver(solver_command)
 
 if args["template"]:
     output_template = args["template"]
